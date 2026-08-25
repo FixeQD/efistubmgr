@@ -1,0 +1,24 @@
+[package]
+name = "efistubmgr"
+version = "0.1.0"
+edition = "2021"
+description = "Script-friendly EFISTUB manager"
+license = "GPL-3.0-only"
+autotests = false
+
+[[bin]]
+name = "efistubmgr"
+path = "src/main.rs"
+
+[dependencies]
+efivar = { version = "2", features = ["store"] }
+eros = "0.7"
+gpt = "4"
+uuid = { version = "1", features = ["v4"] }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = true
+opt-level = "z"
+panic = "abort"
