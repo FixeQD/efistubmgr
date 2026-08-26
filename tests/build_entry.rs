@@ -3,13 +3,13 @@ use crate::testtoolkit::dummy_hard_drive;
 use efivar::boot::BootEntryAttributes;
 
 fn decode_cmdline(data: &[u8]) -> String {
-    String::from_utf8_lossy(&data[8..])
-        .trim_end_matches('\0')
-        .to_string()
+    let split = data.len() - 8;
+    String::from_utf8_lossy(&data[..split - 1]).to_string()
 }
 
 fn decode_ts(data: &[u8]) -> i64 {
-    i64::from_le_bytes(data[..8].try_into().unwrap())
+    let split = data.len() - 8;
+    i64::from_le_bytes(data[split..].try_into().unwrap())
 }
 
 #[test]
@@ -52,12 +52,10 @@ fn build_boot_entry_optional_data_utf16() {
 fn build_boot_entry_empty_optional() {
     let hd = dummy_hard_drive(1);
     let e = build_boot_entry(hd, "\\EFI\\boot.efi", "entry", "", 0);
-    // hidden metadata: exactly the 8-byte timestamp header, no cmdline
-    assert_eq!(e.optional_data.len(), 8);
-    assert_eq!(
-        i64::from_le_bytes(e.optional_data[..8].try_into().unwrap()),
-        0
-    );
+    // hidden metadata: empty cmdline, then 0x00 terminator, then 8-byte ts
+    assert_eq!(e.optional_data.len(), 9);
+    assert_eq!(e.optional_data[0], 0);
+    assert_eq!(decode_ts(&e.optional_data), 0);
 }
 
 #[test]

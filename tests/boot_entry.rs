@@ -2,16 +2,17 @@ use crate::boot::build_boot_entry;
 use crate::testtoolkit::dummy_hard_drive;
 use efivar::boot::{BootEntry, BootEntryAttributes, FilePath, FilePathList};
 
-/// Decode hidden cmdline from optional_data
+/// Decode hidden cmdline from optional_data.
+/// Layout: [cmdline bytes][0x00][8-byte LE timestamp]
 fn decode_cmdline(data: &[u8]) -> String {
-    String::from_utf8_lossy(&data[8..])
-        .trim_end_matches('\0')
-        .to_string()
+    let split = data.len() - 8;
+    String::from_utf8_lossy(&data[..split - 1]).to_string()
 }
 
 /// Decode hidden timestamp from optional_data.
 fn decode_ts(data: &[u8]) -> i64 {
-    i64::from_le_bytes(data[..8].try_into().unwrap())
+    let split = data.len() - 8;
+    i64::from_le_bytes(data[split..].try_into().unwrap())
 }
 
 #[test]
