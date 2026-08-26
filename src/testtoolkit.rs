@@ -1,20 +1,23 @@
 //! testtoolkit - helpers for testing bootctl
 //! Only mock NVRAM / boot simulation helpers.
 
-use efivar::boot::{BootEntry, BootEntryAttributes, BootVarReader, BootVarWriter, EFIHardDrive, EFIHardDriveType, FilePath, FilePathList};
+use efivar::boot::{
+    BootEntry, BootEntryAttributes, BootVarReader, BootVarWriter, EFIHardDrive, EFIHardDriveType,
+    FilePath, FilePathList,
+};
 use efivar::efi::Variable;
 use efivar::store::MemoryStore;
 use efivar::VarManager;
 use eros::Context;
 use uuid::Uuid;
 
-use crate::boot::try_build_boot_entry;
 use crate::die;
-use crate::nvram::{try_list_generations, Generation};
-use crate::DESC_PREFIX;
+use crate::metadata;
+use crate::nvram::try_list_generations;
 
 pub fn try_dummy_hard_drive(partition_number: u32) -> eros::Result<EFIHardDrive> {
-    let sig = Uuid::parse_str("12345678-1234-1234-1234-123456789abc").context("parsing dummy UUID")?;
+    let sig =
+        Uuid::parse_str("12345678-1234-1234-1234-123456789abc").context("parsing dummy UUID")?;
     Ok(EFIHardDrive {
         partition_number,
         partition_start: 2048 + (partition_number as u64 * 1000),
@@ -29,7 +32,10 @@ pub fn dummy_hard_drive(partition_number: u32) -> EFIHardDrive {
     try_dummy_hard_drive(partition_number).unwrap_or_else(|e| die(format!("dummy_hard_drive: {e}")))
 }
 
-pub fn try_dummy_hard_drive_with_sig(partition_number: u32, sig: Uuid) -> eros::Result<EFIHardDrive> {
+pub fn try_dummy_hard_drive_with_sig(
+    partition_number: u32,
+    sig: Uuid,
+) -> eros::Result<EFIHardDrive> {
     if sig.is_nil() {
         return Err(eros::error!("partition sig must not be nil"));
     }
@@ -48,28 +54,36 @@ pub fn dummy_hard_drive_with_sig(partition_number: u32, sig: Uuid) -> EFIHardDri
         .unwrap_or_else(|e| die(format!("dummy_hard_drive_with_sig: {e}")))
 }
 
-pub fn try_make_entry(ts: i64, partition_number: u32, loader: &str, optional: &str) -> eros::Result<BootEntry> {
+/// Build a mock entry with hidden timestamp metadata
+pub fn try_make_entry(
+    ts: i64,
+    partition_number: u32,
+    loader: &str,
+    cmdline: &str,
+) -> eros::Result<BootEntry> {
     let hd = try_dummy_hard_drive(partition_number)?;
     Ok(BootEntry {
         attributes: BootEntryAttributes::LOAD_OPTION_ACTIVE,
-        description: format!("{}{}", crate::DESC_PREFIX, ts),
+        description: format!("entry-{ts}"),
         file_path_list: Some(FilePathList {
-            file_path: FilePath { path: loader.to_string() },
+            file_path: FilePath {
+                path: loader.to_string(),
+            },
             hard_drive: hd,
         }),
-        optional_data: optional.encode_utf16().flat_map(|c| c.to_le_bytes()).collect(),
+        optional_data: metadata::encode(ts, cmdline),
     })
 }
 
-pub fn make_entry(ts: i64, partition_number: u32, loader: &str, optional: &str) -> BootEntry {
-    try_make_entry(ts, partition_number, loader, optional)
+pub fn make_entry(ts: i64, partition_number: u32, loader: &str, cmdline: &str) -> BootEntry {
+    try_make_entry(ts, partition_number, loader, cmdline)
         .unwrap_or_else(|e| die(format!("make_entry: {e}")))
 }
 
 pub fn try_insert_entry(mgr: &mut MemoryStore, id: u16, ts: i64) -> eros::Result<()> {
     let entry = try_make_entry(ts, 1, "\\EFI\\Boot\\bootx64.efi", "")?;
     mgr.add_boot_entry(id, entry)
-        .with_context(|| format!("inserting Entry entry Boot{id:04X} ts={ts}"))?;
+        .with_context(|| format!("inserting entry Boot{id:04X} ts={ts}"))?;
     Ok(())
 }
 
@@ -77,32 +91,47 @@ pub fn insert_entry(mgr: &mut MemoryStore, id: u16, ts: i64) {
     try_insert_entry(mgr, id, ts).unwrap_or_else(|e| die(format!("{e}")))
 }
 
-pub fn try_insert_entry_with_loader(mgr: &mut MemoryStore, id: u16, ts: i64, loader: &str, optional: &str) -> eros::Result<()> {
-    let entry = try_make_entry(ts, 1, loader, optional)?;
+pub fn try_insert_entry_with_loader(
+    mgr: &mut MemoryStore,
+    id: u16,
+    ts: i64,
+    loader: &str,
+    cmdline: &str,
+) -> eros::Result<()> {
+    let entry = try_make_entry(ts, 1, loader, cmdline)?;
     mgr.add_boot_entry(id, entry)
-        .with_context(|| format!("inserting Entry entry Boot{id:04X} loader={loader:?}"))?;
+        .with_context(|| format!("inserting entry Boot{id:04X} loader={loader:?}"))?;
     Ok(())
 }
 
-pub fn insert_entry_with_loader(mgr: &mut MemoryStore, id: u16, ts: i64, loader: &str, optional: &str) {
-    try_insert_entry_with_loader(mgr, id, ts, loader, optional).unwrap_or_else(|e| die(format!("{e}")))
+pub fn insert_entry_with_loader(
+    mgr: &mut MemoryStore,
+    id: u16,
+    ts: i64,
+    loader: &str,
+    cmdline: &str,
+) {
+    try_insert_entry_with_loader(mgr, id, ts, loader, cmdline)
+        .unwrap_or_else(|e| die(format!("{e}")))
 }
 
 pub fn try_insert_other_entry(mgr: &mut MemoryStore, id: u16, desc: &str) -> eros::Result<()> {
     if desc.is_empty() {
-        return Err(eros::error!("non-Entry description must not be empty"));
+        return Err(eros::error!("other-entry description must not be empty"));
     }
     let entry = BootEntry {
         attributes: BootEntryAttributes::LOAD_OPTION_ACTIVE,
         description: desc.to_string(),
         file_path_list: Some(FilePathList {
-            file_path: FilePath { path: "\\EFI\\Other\\boot.efi".to_string() },
+            file_path: FilePath {
+                path: "\\EFI\\Other\\boot.efi".to_string(),
+            },
             hard_drive: try_dummy_hard_drive(1)?,
         }),
         optional_data: vec![],
     };
     mgr.add_boot_entry(id, entry)
-        .with_context(|| format!("inserting non-Entry entry Boot{id:04X} desc={desc:?}"))?;
+        .with_context(|| format!("inserting other entry Boot{id:04X} desc={desc:?}"))?;
     Ok(())
 }
 
@@ -138,12 +167,19 @@ pub fn try_simulate_boot(mgr: &dyn VarManager) -> eros::Result<Option<(u16, Boot
     for id in order {
         let var = Variable::new(&format!("Boot{id:04X}"));
         match BootEntry::read(mgr, &var) {
-            Ok(entry) if entry.attributes.contains(BootEntryAttributes::LOAD_OPTION_ACTIVE) => {
+            Ok(entry)
+                if entry
+                    .attributes
+                    .contains(BootEntryAttributes::LOAD_OPTION_ACTIVE) =>
+            {
                 return Ok(Some((id, entry)))
             }
             Ok(_) => continue,
             Err(e) => {
-                eprintln!("{}: warning: failed to parse boot entry {var:?}: {e}", env!("CARGO_PKG_NAME"));
+                eprintln!(
+                    "{}: warning: failed to parse boot entry {var:?}: {e}",
+                    env!("CARGO_PKG_NAME")
+                );
                 continue;
             }
         }
@@ -153,21 +189,28 @@ pub fn try_simulate_boot(mgr: &dyn VarManager) -> eros::Result<Option<(u16, Boot
 
 pub fn simulate_boot(mgr: &dyn VarManager) -> Option<(u16, BootEntry)> {
     try_simulate_boot(mgr).unwrap_or_else(|e| {
-        eprintln!("{}: warning: simulate_boot failed: {e}", env!("CARGO_PKG_NAME"));
+        eprintln!(
+            "{}: warning: simulate_boot failed: {e}",
+            env!("CARGO_PKG_NAME")
+        );
         None
     })
 }
 
-pub fn try_simulate_desc_boot(mgr: &dyn VarManager) -> eros::Result<Option<(u16, i64)>> {
+/// Simulate picking the newest generation (by hidden timestamp).
+pub fn try_simulate_newest_boot(mgr: &dyn VarManager) -> eros::Result<Option<(u16, i64)>> {
     Ok(try_list_generations(mgr)?
         .into_iter()
         .next()
         .map(|g| (g.id, g.ts)))
 }
 
-pub fn simulate_desc_boot(mgr: &dyn VarManager) -> Option<(u16, i64)> {
-    try_simulate_desc_boot(mgr).unwrap_or_else(|e| {
-        eprintln!("{}: warning: simulate_desc_boot failed: {e}", env!("CARGO_PKG_NAME"));
+pub fn simulate_newest_boot(mgr: &dyn VarManager) -> Option<(u16, i64)> {
+    try_simulate_newest_boot(mgr).unwrap_or_else(|e| {
+        eprintln!(
+            "{}: warning: simulate_newest_boot failed: {e}",
+            env!("CARGO_PKG_NAME")
+        );
         None
     })
 }

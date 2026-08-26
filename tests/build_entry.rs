@@ -1,20 +1,30 @@
-use crate::DESC_PREFIX;
 use crate::boot::build_boot_entry;
 use crate::testtoolkit::dummy_hard_drive;
 use efivar::boot::BootEntryAttributes;
 
+fn decode_cmdline(data: &[u8]) -> String {
+    String::from_utf8_lossy(&data[8..])
+        .trim_end_matches('\0')
+        .to_string()
+}
+
+fn decode_ts(data: &[u8]) -> i64 {
+    i64::from_le_bytes(data[..8].try_into().unwrap())
+}
+
 #[test]
 fn build_boot_entry_description() {
     let hd = dummy_hard_drive(1);
-    let e = build_boot_entry(hd, "\\EFI\\Boot\\linux.efi", "cmdline", 123456);
-    assert_eq!(e.description, format!("{}{}", DESC_PREFIX, "123456"));
+    let e = build_boot_entry(hd, "\\EFI\\Boot\\linux.efi", "entry", "cmdline", 123456);
+    assert_eq!(e.description, "entry");
+    assert_eq!(decode_ts(&e.optional_data), 123456);
     assert_eq!(e.attributes, BootEntryAttributes::LOAD_OPTION_ACTIVE);
 }
 
 #[test]
 fn build_boot_entry_loader_path() {
     let hd = dummy_hard_drive(2);
-    let e = build_boot_entry(hd.clone(), "\\EFI\\Custom\\boot.efi", "", 0);
+    let e = build_boot_entry(hd.clone(), "\\EFI\\Custom\\boot.efi", "entry", "", 0);
     assert_eq!(
         e.file_path_list.as_ref().unwrap().file_path.path,
         "\\EFI\\Custom\\boot.efi"
@@ -33,43 +43,36 @@ fn build_boot_entry_loader_path() {
 fn build_boot_entry_optional_data_utf16() {
     let hd = dummy_hard_drive(1);
     let opt = "initrd=\\initramfs.img";
-    let e = build_boot_entry(hd, "\\EFI\\boot.efi", opt, 0);
-    let decoded: Vec<u16> = e
-        .optional_data
-        .chunks(2)
-        .map(|b| u16::from_le_bytes([b[0], b[1]]))
-        .collect();
-    assert_eq!(decoded, opt.encode_utf16().collect::<Vec<_>>());
+    let e = build_boot_entry(hd, "\\EFI\\boot.efi", "entry", opt, 0);
+    let decoded = decode_cmdline(&e.optional_data);
+    assert_eq!(decoded, opt);
 }
 
 #[test]
 fn build_boot_entry_empty_optional() {
     let hd = dummy_hard_drive(1);
-    let e = build_boot_entry(hd, "\\EFI\\boot.efi", "", 0);
-    assert!(e.optional_data.is_empty());
+    let e = build_boot_entry(hd, "\\EFI\\boot.efi", "entry", "", 0);
+    // hidden metadata: exactly the 8-byte timestamp header, no cmdline
+    assert_eq!(e.optional_data.len(), 8);
+    assert_eq!(
+        i64::from_le_bytes(e.optional_data[..8].try_into().unwrap()),
+        0
+    );
 }
 
 #[test]
 fn build_boot_entry_negative_timestamp() {
     let hd = dummy_hard_drive(1);
-    let e = build_boot_entry(hd, "\\EFI\\boot.efi", "", -999);
-    assert_eq!(e.description, format!("{}{}", DESC_PREFIX, "-999"));
-    assert_eq!(
-        crate::timestamp::desc_timestamp(&e.description),
-        Some(-999)
-    );
+    let e = build_boot_entry(hd, "\\EFI\\boot.efi", "entry", "", -999);
+    assert_eq!(e.description, "entry");
+    assert_eq!(decode_ts(&e.optional_data), -999);
 }
 
 #[test]
 fn build_boot_entry_unicode_optional() {
     let hd = dummy_hard_drive(1);
     let opt = "unicode-✓-test";
-    let e = build_boot_entry(hd, "\\EFI\\boot.efi", opt, 1);
-    let decoded: Vec<u16> = e
-        .optional_data
-        .chunks(2)
-        .map(|b| u16::from_le_bytes([b[0], b[1]]))
-        .collect();
-    let s = String::from_utf16(&decoded).unwrap();
+    let e = build_boot_entry(hd, "\\EFI\\boot.efi", "entry", opt, 1);
+    let s = decode_cmdline(&e.optional_data);
     assert_eq!(s, opt);
 }

@@ -1,7 +1,7 @@
-use crate::cmd_delete;
-use crate::testtoolkit::{boot_order, insert_entry, insert_other_entry, set_boot_order};
 use crate::boot::cmd_create_with_hard_drive;
+use crate::cmd_delete;
 use crate::nvram::list_generations;
+use crate::testtoolkit::{boot_order, insert_entry, insert_other_entry, set_boot_order};
 use efivar::boot::BootVarReader;
 use efivar::efi::Variable;
 use efivar::store::MemoryStore;
@@ -76,10 +76,17 @@ fn delete_preserves_other_order() {
 fn delete_then_create_reuses_id() {
     let mut store = MemoryStore::new();
     let hd = crate::testtoolkit::dummy_hard_drive(1);
-    let id0 = cmd_create_with_hard_drive(&mut store, hd.clone(), "\\EFI\\Boot\\boot.efi", "", 100);
+    let id0 = cmd_create_with_hard_drive(
+        &mut store,
+        hd.clone(),
+        "\\EFI\\Boot\\boot.efi",
+        "entry",
+        "",
+        100,
+    );
     assert_eq!(id0, 0);
     cmd_delete(&mut store, 0);
-    let id1 = cmd_create_with_hard_drive(&mut store, hd, "\\EFI\\Boot\\boot.efi", "", 200);
+    let id1 = cmd_create_with_hard_drive(&mut store, hd, "\\EFI\\Boot\\boot.efi", "entry", "", 200);
     assert_eq!(id1, 0); // reused
 }
 

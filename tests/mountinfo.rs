@@ -89,7 +89,7 @@ fn mountinfo_real_world_example() {
     assert_eq!(entries.len(), 4);
     let boot = entries
         .iter()
-        .find(|e| e.mount_point == PathBuf::from("/boot"))
+        .find(|e| e.mount_point.as_os_str() == "/boot")
         .unwrap();
     assert_eq!(boot.major, 259);
     assert_eq!(boot.minor, 1);

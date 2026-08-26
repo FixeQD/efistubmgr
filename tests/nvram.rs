@@ -1,9 +1,8 @@
-use crate::DESC_PREFIX;
+use crate::boot::build_boot_entry;
+use crate::nvram::list_generations;
 use crate::testtoolkit::{
     boot_order, dummy_hard_drive, insert_entry, insert_entry_with_loader, insert_other_entry,
 };
-use crate::boot::build_boot_entry;
-use crate::nvram::list_generations;
 use efivar::boot::{BootEntry, BootVarReader, BootVarWriter};
 use efivar::efi::{Variable, VariableFlags};
 use efivar::store::MemoryStore;
@@ -13,12 +12,13 @@ use efivar::{VarReader, VarWriter};
 fn nvram_persistence_memory_store_roundtrip() {
     let mut store = MemoryStore::new();
     let hd = dummy_hard_drive(1);
-    let entry = build_boot_entry(hd.clone(), "\\EFI\\Boot\\boot.efi", "opt", 12345);
+    let entry = build_boot_entry(hd.clone(), "\\EFI\\Boot\\boot.efi", "entry", "opt", 12345);
     store.add_boot_entry(0x1234, entry.clone()).unwrap();
     store.set_boot_order(vec![0x1234, 0x0001]).unwrap();
     // Simulate reboot: read back
     let read_entry = BootEntry::read(&store, &Variable::new("Boot1234")).unwrap();
-    assert_eq!(read_entry.description, format!("{}{}", DESC_PREFIX, "12345"));
+    assert_eq!(read_entry.description, "entry");
+    assert_eq!(crate::metadata::entry_timestamp(&read_entry), Some(12345));
     assert_eq!(read_entry.file_path_list.unwrap().hard_drive, hd);
     assert_eq!(store.get_boot_order().unwrap(), vec![0x1234, 0x0001]);
 }
@@ -59,7 +59,7 @@ fn nvram_overwrite_boot_order() {
 fn nvram_variable_flags_default() {
     let mut store = MemoryStore::new();
     let hd = dummy_hard_drive(1);
-    let entry = build_boot_entry(hd, "\\EFI\\boot.efi", "", 1);
+    let entry = build_boot_entry(hd, "\\EFI\\boot.efi", "entry", "", 1);
     store.add_boot_entry(0, entry).unwrap();
     let (_, flags) = store.read(&Variable::new("Boot0000")).unwrap();
     // efivar writer uses VariableFlags::default() = NON_VOLATILE | BOOTSERVICE_ACCESS | RUNTIME_ACCESS
@@ -126,7 +126,7 @@ fn nvram_many_boot_entries_stress() {
     assert_eq!(gens[99].ts, 0);
     // Simulate boot picks 99 (ts 990)
     assert_eq!(
-        crate::testtoolkit::simulate_desc_boot(&store).unwrap(),
+        crate::testtoolkit::simulate_newest_boot(&store).unwrap(),
         (99, 990)
     );
 }
@@ -144,6 +144,7 @@ fn nvram_all_desc_sorted_even_if_initially_shuffled() {
         &mut store,
         hd,
         "\\EFI\\Boot\\boot.efi",
+        "entry",
         "",
         300,
     );

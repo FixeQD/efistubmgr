@@ -8,4 +8,3 @@ mod generations;
 mod hard_drive;
 mod mountinfo;
 mod nvram;
-mod timestamp;

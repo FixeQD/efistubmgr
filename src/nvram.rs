@@ -4,7 +4,7 @@ use efivar::VarManager;
 use eros::Context;
 
 use crate::die;
-use crate::timestamp::desc_timestamp;
+use crate::metadata;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Generation {
@@ -23,11 +23,15 @@ pub fn try_list_generations(mgr: &dyn VarManager) -> eros::Result<Vec<Generation
             let id = var.boot_var_id()?;
             match BootEntry::read(mgr, &var) {
                 Ok(entry) => {
-                    let ts = desc_timestamp(&entry.description)?;
+                    // only entries with hidden metadata (created via metadata::encode)
+                    let ts = metadata::entry_timestamp(&entry)?;
                     Some(Generation { id, ts })
                 }
                 Err(e) => {
-                    eprintln!("{}: warning: failed to parse boot entry {var:?}: {e}", env!("CARGO_PKG_NAME"));
+                    eprintln!(
+                        "{}: warning: failed to parse boot entry {var:?}: {e}",
+                        env!("CARGO_PKG_NAME")
+                    );
                     None
                 }
             }
@@ -40,7 +44,8 @@ pub fn try_list_generations(mgr: &dyn VarManager) -> eros::Result<Vec<Generation
 
 /// Format generations without printing.
 pub fn list_generations_formatted(mgr: &dyn VarManager) -> Vec<String> {
-    try_list_generations_formatted(mgr).unwrap_or_else(|e| die(format!("formatting generations: {e}")))
+    try_list_generations_formatted(mgr)
+        .unwrap_or_else(|e| die(format!("formatting generations: {e}")))
 }
 
 pub fn try_list_generations_formatted(mgr: &dyn VarManager) -> eros::Result<Vec<String>> {
@@ -57,7 +62,9 @@ pub fn find_free_id(mgr: &dyn VarManager) -> u16 {
 pub fn try_find_free_id(mgr: &dyn VarManager) -> eros::Result<u16> {
     for id in 0u16..=0xFFFF {
         let var = Variable::new(&format!("Boot{id:04X}"));
-        let exists = mgr.exists(&var).with_context(|| format!("checking Boot{id:04X}"))?;
+        let exists = mgr
+            .exists(&var)
+            .with_context(|| format!("checking Boot{id:04X}"))?;
         if !exists {
             return Ok(id);
         }

@@ -1,6 +1,5 @@
-use crate::DESC_PREFIX;
-use crate::testtoolkit::{dummy_hard_drive, insert_entry, insert_other_entry};
 use crate::nvram::{list_generations, list_generations_formatted};
+use crate::testtoolkit::{dummy_hard_drive, insert_entry, insert_other_entry};
 use efivar::boot::{BootEntry, BootEntryAttributes, FilePath, FilePathList};
 use efivar::efi::{Variable, VariableFlags};
 use efivar::store::MemoryStore;
@@ -44,10 +43,10 @@ fn list_generations_sorts_newest_first() {
 fn list_generations_ignores_unparsable_desc_prefix() {
     let mut store = MemoryStore::new();
     insert_entry(&mut store, 0, 100);
-    // Entry with bad timestamp
+    // Entry without metadata must be ignored regardless of description
     let bad = BootEntry {
         attributes: BootEntryAttributes::LOAD_OPTION_ACTIVE,
-        description: format!("{}{}", DESC_PREFIX, "NotATimestamp").to_string(),
+        description: "NotATimestamp".to_string(),
         file_path_list: Some(FilePathList {
             file_path: FilePath {
                 path: "\\EFI\\bad.efi".into(),
@@ -128,11 +127,11 @@ fn list_generations_negative_timestamps() {
 
 #[test]
 fn list_generations_trimmed_description() {
-    // Our build always uses format!("{}{}", DESC_PREFIX, ts) without spaces, but test that stored entry with spaces is handled
+    // entries without hidden metadata are never listed, even if description looks numeric
     let mut store = MemoryStore::new();
     let entry = BootEntry {
         attributes: BootEntryAttributes::LOAD_OPTION_ACTIVE,
-        description: format!("{}{}", DESC_PREFIX, "  123").to_string(),
+        description: "  123".to_string(),
         file_path_list: Some(FilePathList {
             file_path: FilePath {
                 path: "\\EFI\\a.efi".into(),
@@ -144,7 +143,7 @@ fn list_generations_trimmed_description() {
     use efivar::boot::BootVarWriter;
     store.add_boot_entry(0, entry).unwrap();
     let gens = list_generations(&store);
-    assert_eq!(gens[0].ts, 123);
+    assert!(gens.is_empty(), "description-only entries must not be listed");
 }
 
 #[test]

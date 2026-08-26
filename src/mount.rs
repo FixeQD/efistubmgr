@@ -3,8 +3,6 @@ use std::path::{Path, PathBuf};
 use efivar::boot::{EFIHardDrive, EFIHardDriveType};
 use eros::Context;
 
-
-
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct MountEntry {
     pub mount_point: PathBuf,
@@ -76,11 +74,12 @@ pub fn try_resolve_partition(mount_point: &Path) -> eros::Result<(String, u32)> 
 }
 
 pub fn try_read_logical_block_size(disk_name: &str) -> eros::Result<gpt::disk::LogicalBlockSize> {
-    let raw: u64 = std::fs::read_to_string(format!("/sys/block/{disk_name}/queue/logical_block_size"))
-        .with_context(|| format!("reading logical_block_size for {disk_name}"))?
-        .trim()
-        .parse::<u64>()
-        .with_context(|| format!("parsing logical_block_size for {disk_name}"))?;
+    let raw: u64 =
+        std::fs::read_to_string(format!("/sys/block/{disk_name}/queue/logical_block_size"))
+            .with_context(|| format!("reading logical_block_size for {disk_name}"))?
+            .trim()
+            .parse::<u64>()
+            .with_context(|| format!("parsing logical_block_size for {disk_name}"))?;
 
     raw.try_into()
         .map_err(|_| eros::error!("unsupported logical block size {raw} on {disk_name}"))
