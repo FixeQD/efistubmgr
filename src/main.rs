@@ -10,6 +10,7 @@ use efivar::VarManager;
 use eros::Context;
 
 pub mod boot;
+pub mod lock;
 pub mod metadata;
 pub mod mount;
 pub mod nvram;
@@ -98,7 +99,10 @@ fn main() -> ExitCode {
 
     let res: eros::Result<()> = (|| {
         match args[1].as_str() {
-            "list" => try_cmd_list(mgr.as_ref())?,
+            "list" => {
+                let _guard = lock::acquire_shared()?;
+                try_cmd_list(mgr.as_ref())?
+            }
             "create" => {
                 let mut positional: Vec<String> = Vec::new();
                 let mut timestamp_opt: Option<i64> = None;
@@ -147,6 +151,7 @@ fn main() -> ExitCode {
                     usage(&args[0]);
                 }
                 let timestamp = timestamp_opt.unwrap_or_else(current_timestamp);
+                let _guard = lock::acquire_exclusive()?;
                 let id = try_cmd_create(
                     mgr.as_mut(),
                     &positional[0],
@@ -164,6 +169,7 @@ fn main() -> ExitCode {
                 let id = u16::from_str_radix(&args[2], 16).map_err(|e| {
                     eros::error!(e).context(format!("parsing Boot id {:?} as hex u16", args[2]))
                 })?;
+                let _guard = lock::acquire_exclusive()?;
                 try_cmd_delete(mgr.as_mut(), id)?;
             }
             _ => usage(&args[0]),

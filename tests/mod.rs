@@ -6,5 +6,6 @@ mod delete;
 mod find_free_id;
 mod generations;
 mod hard_drive;
+mod lock;
 mod mountinfo;
 mod nvram;
