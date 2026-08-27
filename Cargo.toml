@@ -1,7 +1,7 @@
 [package]
 name = "efistubmgr"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "Script-friendly EFISTUB manager"
 license = "GPL-3.0-only"
 autotests = false
@@ -11,11 +11,11 @@ name = "efistubmgr"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.6.6", features = ["derive"] }
-efivar = { version = "2", features = ["store"] }
-eros = "0.7"
-gpt = "4"
-uuid = { version = "1", features = ["v4"] }
+clap = { version = "4", default-features = false, features = ["derive", "std"] }
+efivar = { version = "2", default-features = false, features = ["store"] }
+eros = { version = "0.7", default-features = false }
+gpt = { version = "4", default-features = false }
+uuid = { version = "1", default-features = false, features = ["v4"] }
 
 [profile.release]
 lto = "fat"

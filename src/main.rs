@@ -5,8 +5,8 @@ use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use clap::{Parser, Subcommand};
-use efivar::efi::Variable;
 use efivar::VarManager;
+use efivar::efi::Variable;
 use eros::Context;
 
 pub mod boot;

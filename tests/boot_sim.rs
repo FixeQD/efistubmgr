@@ -46,8 +46,8 @@ fn simulate_boot_returns_none_if_no_active() {
 fn simulate_boot_skips_corrupt_entry() {
     let mut store = MemoryStore::new();
     insert_entry(&mut store, 1, 200);
-    use efivar::efi::{Variable, VariableFlags};
     use efivar::VarWriter;
+    use efivar::efi::{Variable, VariableFlags};
     store
         .write(
             &Variable::new("Boot0000"),

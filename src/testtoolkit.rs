@@ -1,13 +1,13 @@
 //! testtoolkit - helpers for testing bootctl
 //! Only mock NVRAM / boot simulation helpers.
 
+use efivar::VarManager;
 use efivar::boot::{
     BootEntry, BootEntryAttributes, BootVarReader, BootVarWriter, EFIHardDrive, EFIHardDriveType,
     FilePath, FilePathList,
 };
 use efivar::efi::Variable;
 use efivar::store::MemoryStore;
-use efivar::VarManager;
 use eros::Context;
 use uuid::Uuid;
 
@@ -172,7 +172,7 @@ pub fn try_simulate_boot(mgr: &dyn VarManager) -> eros::Result<Option<(u16, Boot
                     .attributes
                     .contains(BootEntryAttributes::LOAD_OPTION_ACTIVE) =>
             {
-                return Ok(Some((id, entry)))
+                return Ok(Some((id, entry)));
             }
             Ok(_) => continue,
             Err(e) => {

@@ -2,10 +2,10 @@ use crate::boot::cmd_create_with_hard_drive;
 use crate::cmd_delete;
 use crate::nvram::list_generations;
 use crate::testtoolkit::{boot_order, insert_entry, insert_other_entry, set_boot_order};
+use efivar::VarReader;
 use efivar::boot::BootVarReader;
 use efivar::efi::Variable;
 use efivar::store::MemoryStore;
-use efivar::VarReader;
 
 #[test]
 fn delete_removes_variable_and_boot_order() {

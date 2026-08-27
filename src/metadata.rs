@@ -30,7 +30,7 @@ pub fn decode(data: &[u8]) -> Option<(i64, String)> {
     let ts = i64::from_le_bytes(data[split..].try_into().ok()?);
 
     let terminator_idx = split - TERMINATOR_LEN;
-    if terminator_idx % 2 != 0 {
+    if !terminator_idx.is_multiple_of(2) {
         return None; // cmdline must be a whole number of UTF-16 code units
     }
     if data[terminator_idx] != 0 || data[terminator_idx + 1] != 0 {
@@ -38,8 +38,10 @@ pub fn decode(data: &[u8]) -> Option<(i64, String)> {
     }
 
     let units: Vec<u16> = data[..terminator_idx]
-        .chunks_exact(2)
-        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|c| u16::from_le_bytes(*c))
         .collect();
     let cmdline = String::from_utf16(&units).ok()?;
     Some((ts, cmdline))
@@ -49,7 +51,7 @@ fn is_plausible(ts: i64, cmd: &str) -> bool {
     if cmd.is_empty() {
         return true; // allow i64::MAX/MIN in tests
     }
-    if ts > 10_000_000_000 || ts < -10_000_000_000 {
+    if !(-10_000_000_000..=10_000_000_000).contains(&ts) {
         return false;
     }
     if !cmd

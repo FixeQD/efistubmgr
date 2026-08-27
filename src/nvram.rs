@@ -1,6 +1,6 @@
+use efivar::VarManager;
 use efivar::boot::BootEntry;
 use efivar::efi::Variable;
-use efivar::VarManager;
 use eros::Context;
 
 use crate::die;

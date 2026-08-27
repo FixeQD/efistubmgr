@@ -84,9 +84,11 @@ fn boot_entry_attributes_preserved() {
     };
     let parsed = BootEntry::parse(entry.to_bytes()).unwrap();
     assert_eq!(parsed.attributes, attrs);
-    assert!(parsed
-        .attributes
-        .contains(BootEntryAttributes::LOAD_OPTION_HIDDEN));
+    assert!(
+        parsed
+            .attributes
+            .contains(BootEntryAttributes::LOAD_OPTION_HIDDEN)
+    );
 }
 
 #[test]

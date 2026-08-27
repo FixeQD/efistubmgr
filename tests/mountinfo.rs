@@ -1,4 +1,4 @@
-use crate::mount::{parse_mountinfo_from_str, MountEntry};
+use crate::mount::{MountEntry, parse_mountinfo_from_str};
 use std::path::PathBuf;
 
 #[test]

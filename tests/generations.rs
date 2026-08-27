@@ -1,9 +1,9 @@
 use crate::nvram::{list_generations, list_generations_formatted};
 use crate::testtoolkit::{dummy_hard_drive, insert_entry, insert_other_entry};
+use efivar::VarWriter;
 use efivar::boot::{BootEntry, BootEntryAttributes, FilePath, FilePathList};
 use efivar::efi::{Variable, VariableFlags};
 use efivar::store::MemoryStore;
-use efivar::VarWriter;
 
 #[test]
 fn list_generations_empty() {
@@ -143,7 +143,10 @@ fn list_generations_trimmed_description() {
     use efivar::boot::BootVarWriter;
     store.add_boot_entry(0, entry).unwrap();
     let gens = list_generations(&store);
-    assert!(gens.is_empty(), "description-only entries must not be listed");
+    assert!(
+        gens.is_empty(),
+        "description-only entries must not be listed"
+    );
 }
 
 #[test]

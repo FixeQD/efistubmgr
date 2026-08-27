@@ -1,8 +1,8 @@
 use crate::nvram::find_free_id;
 use crate::testtoolkit::{insert_entry, insert_other_entry};
+use efivar::VarWriter;
 use efivar::efi::{Variable, VariableFlags};
 use efivar::store::MemoryStore;
-use efivar::VarWriter;
 
 #[test]
 fn find_free_id_empty_store_returns_zero() {

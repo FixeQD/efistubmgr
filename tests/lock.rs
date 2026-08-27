@@ -1,7 +1,10 @@
 use crate::lock::{exclusive_at, open_lock_file, shared_at};
 
 fn temp_lock_path(name: &str) -> std::path::PathBuf {
-    std::env::temp_dir().join(format!("efistubmgr-test-{name}-{}.lock", std::process::id()))
+    std::env::temp_dir().join(format!(
+        "efistubmgr-test-{name}-{}.lock",
+        std::process::id()
+    ))
 }
 
 #[test]
