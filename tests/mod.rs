@@ -9,3 +9,4 @@ mod hard_drive;
 mod lock;
 mod mountinfo;
 mod nvram;
+mod timestamp_arg;

@@ -82,11 +82,16 @@ fn usage(prog: &str) -> ! {
     std::process::exit(2);
 }
 
-fn current_timestamp() -> i64 {
-    SystemTime::now()
+fn timestamp_from(now: SystemTime) -> eros::Result<i64> {
+    let secs = now
         .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs() as i64
+        .context("system clock is set before the Unix epoch, pass --timestamp explicitly")?
+        .as_secs();
+    Ok(secs as i64)
+}
+
+fn current_timestamp() -> eros::Result<i64> {
+    timestamp_from(SystemTime::now())
 }
 
 fn main() -> ExitCode {
@@ -150,7 +155,10 @@ fn main() -> ExitCode {
                 if positional.len() != 4 {
                     usage(&args[0]);
                 }
-                let timestamp = timestamp_opt.unwrap_or_else(current_timestamp);
+                let timestamp = match timestamp_opt {
+                    Some(v) => v,
+                    None => current_timestamp()?,
+                };
                 let _guard = lock::acquire_exclusive()?;
                 let id = try_cmd_create(
                     mgr.as_mut(),
