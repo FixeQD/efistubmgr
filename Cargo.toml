@@ -11,6 +11,7 @@ name = "efistubmgr"
 path = "src/main.rs"
 
 [dependencies]
+clap = { version = "4.6.6", features = ["derive"] }
 efivar = { version = "2", features = ["store"] }
 eros = "0.7"
 gpt = "4"
