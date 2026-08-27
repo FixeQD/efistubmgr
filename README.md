@@ -38,7 +38,7 @@ inputs = {
   nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
   
   efistubmgr = {
-    url = "github:finix-community/efistubmgr";
+    url = "github:FixeQD/efistubmgr";
     inputs.nixpkgs.follows = "nixpkgs";
   };
 };
