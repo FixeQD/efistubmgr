@@ -3,13 +3,16 @@ use crate::testtoolkit::dummy_hard_drive;
 use efivar::boot::{BootEntry, BootEntryAttributes, FilePath, FilePathList};
 
 /// Decode hidden cmdline from optional_data.
-/// Layout: [cmdline bytes][0x00][8-byte LE timestamp]
+/// Layout: [UTF-16LE cmdline units][0x00 0x00][8-byte LE timestamp]
 fn decode_cmdline(data: &[u8]) -> String {
     let split = data.len() - 8;
-    String::from_utf8_lossy(&data[..split - 1]).to_string()
+    let units: Vec<u16> = data[..split - 2]
+        .chunks_exact(2)
+        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+        .collect();
+    String::from_utf16(&units).unwrap()
 }
 
-/// Decode hidden timestamp from optional_data.
 fn decode_ts(data: &[u8]) -> i64 {
     let split = data.len() - 8;
     i64::from_le_bytes(data[split..].try_into().unwrap())

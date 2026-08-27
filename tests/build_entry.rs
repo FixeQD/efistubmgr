@@ -4,7 +4,11 @@ use efivar::boot::BootEntryAttributes;
 
 fn decode_cmdline(data: &[u8]) -> String {
     let split = data.len() - 8;
-    String::from_utf8_lossy(&data[..split - 1]).to_string()
+    let units: Vec<u16> = data[..split - 2]
+        .chunks_exact(2)
+        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+        .collect();
+    String::from_utf16(&units).unwrap()
 }
 
 fn decode_ts(data: &[u8]) -> i64 {
@@ -52,9 +56,10 @@ fn build_boot_entry_optional_data_utf16() {
 fn build_boot_entry_empty_optional() {
     let hd = dummy_hard_drive(1);
     let e = build_boot_entry(hd, "\\EFI\\boot.efi", "entry", "", 0);
-    // hidden metadata: empty cmdline, then 0x00 terminator, then 8-byte ts
-    assert_eq!(e.optional_data.len(), 9);
+    // hidden metadata: empty cmdline, then 0x00 0x00 UCS-2 terminator, then 8-byte ts
+    assert_eq!(e.optional_data.len(), 10);
     assert_eq!(e.optional_data[0], 0);
+    assert_eq!(e.optional_data[1], 0);
     assert_eq!(decode_ts(&e.optional_data), 0);
 }
 

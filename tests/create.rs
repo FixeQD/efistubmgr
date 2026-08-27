@@ -10,7 +10,11 @@ use efivar::store::MemoryStore;
 /// Decode hidden cmdline from optional_data
 fn decode_cmdline(data: &[u8]) -> String {
     let split = data.len() - 8;
-    String::from_utf8_lossy(&data[..split - 1]).to_string()
+    let units: Vec<u16> = data[..split - 2]
+        .chunks_exact(2)
+        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+        .collect();
+    String::from_utf16(&units).unwrap()
 }
 
 #[test]
