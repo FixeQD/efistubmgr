@@ -40,11 +40,12 @@ pub fn try_resolve_partition(mount_point: &Path) -> eros::Result<(String, u32)> 
 
     let entry = try_parse_mountinfo()?
         .into_iter()
-        .find(|e| {
+        .filter(|e| {
             std::fs::canonicalize(&e.mount_point)
                 .map(|p| p == canon)
                 .unwrap_or(false)
         })
+        .last()
         .ok_or_else(|| eros::error!("no mount found for {}", mount_point.display()))?;
 
     let sys_link = format!("/sys/dev/block/{}:{}", entry.major, entry.minor);
