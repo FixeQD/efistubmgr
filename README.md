@@ -6,7 +6,7 @@ Minimal EFISTUB manager written in Rust. It creates and manages UEFI boot entrie
 
 Designed for NixOS/finix setups where system rebuilds generate new kernel images on every run and you need deterministic boot entry management without parsing raw `efibootmgr` output.
 
-> [!INFO]
+> [!NOTE]
 > `efistubmgr` is a primitive, low-level CLI tool, not a full bootloader framework. It solely manages NVRAM entries. You need to write your own orchestration script (with external bootloader hook) to copy kernels/initrds to the ESP, manage GC/pruning of old files, and trigger `efistubmgr`.
 
 ## Overview
